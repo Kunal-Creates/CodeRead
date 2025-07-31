@@ -69,7 +69,8 @@
             display: inline-block;
         }
 
-        main { display: grid; grid-template-columns: 1fr 1.1fr; gap: 2rem; }
+        /* FIX 1: Changed grid columns to be equal */
+        main { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
         @media (max-width: 1024px) { main { grid-template-columns: 1fr; } }
         
         .card {
@@ -164,7 +165,7 @@
         .analysis-content h3 svg { width: 20px; height: 20px; color: var(--accent); flex-shrink: 0; }
         .analysis-content p { margin-bottom: 1rem; }
         .analysis-content ul { list-style: none; padding-left: 0; margin-bottom: 1rem; }
-        .analysis-content li { display: flex; align-items: flex-start; gap: 0.75rem; margin-bottom: 1rem; } /* Added margin-bottom */
+        .analysis-content li { display: flex; align-items: flex-start; gap: 0.75rem; margin-bottom: 1rem; }
         .analysis-content li::before { content: '✓'; color: var(--accent); font-weight: 600; margin-top: 2px; }
         .analysis-content .code-wrapper { background-color: #272822; border-radius: 0.75rem; margin: 1.5rem 0; overflow: hidden; }
         .analysis-content .code-header { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 1rem; background-color: #393a34; }
@@ -176,6 +177,16 @@
         .analysis-content strong { font-weight: 600; color: var(--primary-text); }
         .analysis-content em { font-style: italic; }
         .analysis-content .analogy { font-style: italic; color: var(--secondary-text); border-left: 3px solid var(--accent); padding-left: 1rem; margin: 1.5rem 0; }
+        
+        /* FIX 2: Added styles for highlighted inline code */
+        .analysis-content code.inline-code {
+            background-color: #272822;
+            color: #f8f8f2;
+            padding: 0.2em 0.4em;
+            border-radius: 4px;
+            font-size: 85%;
+            white-space: normal;
+        }
 
         /* --- Modal Styling --- */
         .modal-overlay { position: fixed; inset: 0; background-color: var(--modal-overlay); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s var(--ease-in-out); }
@@ -354,22 +365,33 @@
         const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
         const renderLoader = (message) => { outputArea.innerHTML = `<div class="loader"><div class="spinner"></div><p>${message}</p></div>`; };
         const renderError = (message) => { outputArea.innerHTML = `<div class="error-message">${message}</div>`; };
+        
+        // FIX 3: Updated renderMarkdown function for better formatting and inline highlighting
         const renderMarkdown = (markdown) => {
+            // Pre-process markdown to handle lists with '*' or '-' and add spacing by creating paragraphs
+            let preProcessedMarkdown = markdown.replace(/\n\s*([*|-])\s/g, '\n\n'); // Create paragraphs from list items
+            preProcessedMarkdown = preProcessedMarkdown.replace(/^\s*([*|-])\s/gm, ''); // Remove the bullet character
+
             const codeBlocks = [];
-            let processedMarkdown = markdown.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
+            let detectedLanguage = null; // To store the language for inline highlighting
+
+            let processedMarkdown = preProcessedMarkdown.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
                 const language = lang || 'plaintext';
+                if (!detectedLanguage && lang) {
+                    detectedLanguage = language; // Store the first language
+                }
                 const escapedCode = code.replace(/</g, '&lt;').replace(/>/g, '&gt;');
                 const highlightedCode = Prism.highlight(escapedCode, Prism.languages[language] || Prism.languages.clike, language);
                 const codeHtml = `<div class="code-wrapper">
-                                <div class="code-header">
-                                    <span class="lang">${language}</span>
-                                    <button class="copy-btn">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                                        Copy
-                                    </button>
-                                </div>
-                                <pre class="language-${language}"><code class="language-${language}">${highlightedCode}</code></pre>
-                            </div>`;
+                                    <div class="code-header">
+                                        <span class="lang">${language}</span>
+                                        <button class="copy-btn">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                            Copy
+                                        </button>
+                                    </div>
+                                    <pre class="language-${language}"><code class="language-${language}">${highlightedCode}</code></pre>
+                                </div>`;
                 codeBlocks.push(codeHtml);
                 return `%%CODE_BLOCK_${codeBlocks.length - 1}%%`;
             });
@@ -379,14 +401,16 @@
                 .replace(/This code is like (.*)\./g, '<p class="analogy">This code is like $1.</p>')
                 .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                 .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                .replace(/`([^`]+)`/g, '<code>$1</code>')
+                // FIX 2: Added inline code highlighting
+                .replace(/`([^`]+)`/g, (match, inlineCode) => {
+                    const langToUse = detectedLanguage || 'clike';
+                    const escapedCode = inlineCode.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    const highlighted = Prism.highlight(escapedCode, Prism.languages[langToUse] || Prism.languages.clike, langToUse);
+                    return `<code class="language-${langToUse} inline-code">${highlighted}</code>`;
+                })
                 .split('\n\n').map(paragraph => {
                     if (paragraph.trim().startsWith('%%CODE_BLOCK_')) return paragraph;
-                    let p = paragraph.replace(/\n\s*-\s/g, '</li><li>').trim();
-                    if (p.startsWith('</li><li>')) {
-                        p = '<ul>' + p + '</ul>';
-                        p = p.replace('</li><li>', '<li>');
-                    }
+                    const p = paragraph.trim();
                     return p ? `<p>${p.replace(/\n/g, '<br>')}</p>` : '';
                 }).join('');
 
@@ -399,15 +423,27 @@
             outputArea.querySelectorAll('.copy-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const code = btn.closest('.code-wrapper').querySelector('pre code').innerText;
-                    navigator.clipboard.writeText(code).then(() => {
+                    // Using a textarea for clipboard copy to improve compatibility in sandboxed environments
+                    const textArea = document.createElement("textarea");
+                    textArea.value = code;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    try {
+                        document.execCommand('copy');
                         btn.innerHTML = 'Copied!';
-                        setTimeout(() => {
-                           btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy`;
-                        }, 2000);
-                    });
+                    } catch (err) {
+                        console.error('Fallback: Oops, unable to copy', err);
+                        btn.innerHTML = 'Error';
+                    }
+                    document.body.removeChild(textArea);
+
+                    setTimeout(() => {
+                        btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy`;
+                    }, 2000);
                 });
             });
         };
+
 
         // --- API Call Logic ---
         const generateWithBackoff = async (payload, loadingMessage) => {
@@ -448,20 +484,20 @@
 
         const getBasePayload = () => {
              if (currentAnalysisType === 'image' && imageBase64) {
-                return {
-                    parts: [
-                        { text: "" }, // Placeholder for prompt
-                        { inlineData: { mimeType: "image/png", data: imageBase64 } }
-                    ]
-                };
-            } else {
-                const code = codeInput.value.trim();
-                if (!code) {
-                    renderError("Please provide some code to analyze.");
-                    return null;
-                }
-                return { parts: [{ text: `\n\nHere is the code:\n\`\`\`\n${code}\n\`\`\`` }] };
-            }
+                 return {
+                     parts: [
+                         { text: "" }, // Placeholder for prompt
+                         { inlineData: { mimeType: "image/png", data: imageBase64 } }
+                     ]
+                 };
+             } else {
+                 const code = codeInput.value.trim();
+                 if (!code) {
+                     renderError("Please provide some code to analyze.");
+                     return null;
+                 }
+                 return { parts: [{ text: `\n\nHere is the code:\n\`\`\`\n${code}\n\`\`\`` }] };
+             }
         };
 
         // --- Event Handlers ---
@@ -480,7 +516,7 @@
             const basePayload = getBasePayload();
             if (!basePayload) return;
 
-            const prompt = `You are an expert test generation AI. Your task is to write a suite of unit tests for the provided code. First, detect the language and a popular testing framework for it (e.g., Jest for JS/TS, PyTest for Python, JUnit for Java). Then, generate the test code. Structure your response in Markdown with these EXACT sections, using the 'ICON:' prefix: ### ICON:Tests Generating Unit Tests\nState the detected language and the testing framework you've chosen. Briefly explain the purpose of the test suite.\n\n### ICON:Logic Code\nProvide the complete, runnable unit test code inside a single code block.`;
+            const prompt = `You are an expert test generation AI. Your task is to write a suite of unit tests for the provided code. First, detect the language and a popular testing framework for it (e.g., Jest for JS/TS, PyTest for Python, JUnit for Java). Then, generate the test code. Structure your response in Markdown with these EXACT sections, in this order, using the 'ICON:' prefix: ### ICON:Tests Generating Unit Tests\nState the detected language and the testing framework you've chosen. Briefly explain the purpose of the test suite.\n\n### ICON:Logic Code\nProvide the complete, runnable unit test code inside a single code block.`;
             basePayload.parts[0].text = prompt + (basePayload.parts[0].text || "");
             generateWithBackoff({ contents: [basePayload] }, 'Generating unit tests...');
         });
