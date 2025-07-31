@@ -6,7 +6,7 @@
     <title>CodeRead - AI Code Explainer</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         /* --- Design System & Theming --- */
         :root {
@@ -44,7 +44,7 @@
         * { box-sizing: border-box; }
         html { scroll-behavior: smooth; }
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Lexend', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg);
             color: var(--primary-text);
             margin: 0;
@@ -57,7 +57,6 @@
         .container { width: 100%; max-width: 1280px; margin: 0 auto; }
         header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3rem; padding: 0 1rem; }
         
-        /* --- Dynamic Logo --- */
         .logo h1 {
             font-size: 2.5rem;
             font-weight: 700;
@@ -65,16 +64,6 @@
             color: var(--primary-text);
             position: relative;
             display: inline-block;
-        }
-        .logo h1::after {
-            content: '|';
-            display: inline-block;
-            animation: blink 0.7s infinite;
-            color: var(--accent);
-        }
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0; }
         }
 
         main { display: grid; grid-template-columns: 1fr 1.1fr; gap: 2rem; }
@@ -101,7 +90,7 @@
 
         /* --- Input Area --- */
         .input-area { position: relative; display: flex; flex-direction: column; flex-grow: 1; }
-        textarea { flex-grow: 1; border: 1px solid var(--border); border-radius: 0.75rem; padding: 1rem; font-family: 'Roboto Mono', monospace; font-size: 0.9rem; resize: none; background-color: var(--bg); color: var(--primary-text); transition: all 0.3s var(--ease-out); }
+        textarea { flex-grow: 1; border: 1px solid var(--border); border-radius: 0.75rem; padding: 1rem; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; resize: none; background-color: var(--bg); color: var(--primary-text); transition: all 0.3s var(--ease-out); }
         textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(var(--accent), 0.2); }
 
         /* --- File Drop Zone --- */
@@ -155,7 +144,7 @@
         .analysis-content ul { list-style: none; padding-left: 0; margin-bottom: 1rem; }
         .analysis-content li { display: flex; align-items: flex-start; gap: 0.75rem; margin-bottom: 0.75rem; }
         .analysis-content li::before { content: '✓'; color: var(--accent); font-weight: 600; margin-top: 2px; }
-        .analysis-content code { font-family: 'Roboto Mono', monospace; background-color: var(--surface-code); border-radius: 4px; padding: 0.2em 0.4em; font-size: 85%; color: var(--primary-text); }
+        .analysis-content code { font-family: 'JetBrains Mono', monospace; background-color: var(--surface-code); border-radius: 4px; padding: 0.2em 0.4em; font-size: 85%; color: var(--primary-text); }
         .analysis-content pre { background-color: #111827; color: #F9FAFB; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; font-size: 0.9rem; margin: 1.5rem 0; }
         .analysis-content pre code { background-color: transparent; padding: 0; color: inherit; }
         .analysis-content strong { font-weight: 600; color: var(--primary-text); }
@@ -274,7 +263,6 @@
         const modalConfirm = document.getElementById('modal-confirm');
         const modalCancel = document.getElementById('modal-cancel');
         const languageSelect = document.getElementById('language-select');
-        const logoText = document.getElementById('logo-text');
 
         // --- State ---
         let isLoading = false;
@@ -283,38 +271,6 @@
         
         // IMPORTANT: Add your Gemini API Key here to run locally
         const USER_API_KEY = "AIzaSyCFrT0Gf0hHWisY_AQPLyV8FJO20ghQPt8"; // <--- PASTE YOUR API KEY HERE
-
-        // --- Dynamic Logo Animation ---
-        const logoWords = ["CodeRead", "Analyze", "Convert", "Test", "Debug"];
-        let wordIndex = 0;
-        
-        const typeEffect = async (element, text) => {
-            for (let i = 0; i < text.length; i++) {
-                element.textContent = text.substring(0, i + 1);
-                await sleep(100);
-            }
-        };
-
-        const deleteEffect = async (element) => {
-            const text = element.textContent;
-            for (let i = text.length; i > 0; i--) {
-                element.textContent = text.substring(0, i - 1);
-                await sleep(60);
-            }
-        };
-
-        const cycleLogoText = async () => {
-            while (true) {
-                await sleep(2000);
-                await deleteEffect(logoText);
-                wordIndex = (wordIndex + 1) % logoWords.length;
-                await sleep(300);
-                await typeEffect(logoText, logoWords[wordIndex]);
-            }
-        };
-        
-        cycleLogoText();
-
 
         // --- Theme Logic ---
         const applyTheme = (theme) => {
