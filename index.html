@@ -9,9 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     
     <!-- PrismJS CSS for Syntax Highlighting -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.css">
-
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css">
     <style>
         /* --- Design System & Theming --- */
         :root {
@@ -30,7 +28,6 @@
             --surface-code: #F3F4F6;
             --shadow-color: 220, 220, 220;
             --modal-overlay: rgba(0, 0, 0, 0.4);
-            --prism-bg: #f5f2f0;
         }
 
         [data-theme="dark"] {
@@ -44,7 +41,6 @@
             --surface-code: #374151;
             --shadow-color: 0, 0, 0;
             --modal-overlay: rgba(0, 0, 0, 0.6);
-            --prism-bg: #2d2d2d;
         }
 
         /* --- Base & Typography --- */
@@ -100,7 +96,7 @@
 
         /* --- Input Area with PrismJS --- */
         .input-area { position: relative; display: flex; flex-direction: column; flex-grow: 1; min-height: 0; }
-        .code-editor-wrapper { flex-grow: 1; position: relative; border: 1px solid var(--border); border-radius: 0.75rem; overflow: hidden; }
+        .code-editor-wrapper { flex-grow: 1; position: relative; border-radius: 0.75rem; overflow: hidden; background-color: #272822; }
         #code-input {
             position: absolute;
             top: 0; left: 0;
@@ -110,7 +106,7 @@
             font-size: 0.9rem;
             line-height: 1.5;
             white-space: pre;
-            caret-color: var(--primary-text);
+            caret-color: white;
             background: transparent;
             color: transparent;
             border: none;
@@ -122,10 +118,9 @@
             position: relative;
             height: 100%;
             overflow: auto;
-            background-color: var(--bg);
         }
-        #highlighting-area pre { margin: 0; }
-        #highlighting-area pre code {
+        #highlighting-area pre, #highlighting-area pre[class*="language-"] { margin: 0; background: none; }
+        #highlighting-area pre code, #highlighting-area pre[class*="language-"] code {
             display: block;
             padding: 1rem;
             font-family: 'JetBrains Mono', monospace;
@@ -171,14 +166,15 @@
         .analysis-content ul { list-style: none; padding-left: 0; margin-bottom: 1rem; }
         .analysis-content li { display: flex; align-items: flex-start; gap: 0.75rem; margin-bottom: 0.75rem; }
         .analysis-content li::before { content: '✓'; color: var(--accent); font-weight: 600; margin-top: 2px; }
-        .analysis-content .code-wrapper { background-color: var(--surface-code); border: 1px solid var(--border); border-radius: 0.75rem; margin: 1.5rem 0; }
-        .analysis-content .code-header { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 1rem; background-color: var(--bg); border-bottom: 1px solid var(--border); border-top-left-radius: 0.75rem; border-top-right-radius: 0.75rem; }
-        .analysis-content .code-header .lang { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--secondary-text); }
-        .analysis-content .copy-btn { background: none; border: 1px solid var(--border); color: var(--secondary-text); padding: 0.25rem 0.5rem; border-radius: 0.375rem; cursor: pointer; font-size: 0.8rem; display: flex; align-items: center; gap: 0.25rem; }
+        .analysis-content .code-wrapper { background-color: #272822; border-radius: 0.75rem; margin: 1.5rem 0; overflow: hidden; }
+        .analysis-content .code-header { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 1rem; background-color: #393a34; }
+        .analysis-content .code-header .lang { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #d4d4d4; }
+        .analysis-content .copy-btn { background: none; border: 1px solid #555; color: #d4d4d4; padding: 0.25rem 0.5rem; border-radius: 0.375rem; cursor: pointer; font-size: 0.8rem; display: flex; align-items: center; gap: 0.25rem; }
         .analysis-content code { font-family: 'JetBrains Mono', monospace; background-color: var(--surface-code); border-radius: 4px; padding: 0.2em 0.4em; font-size: 85%; color: var(--primary-text); }
         .analysis-content pre { background-color: transparent; margin: 0; padding: 1rem; overflow-x: auto; font-size: 0.9rem; }
-        .analysis-content pre code { background-color: transparent; padding: 0; color: inherit; }
+        .analysis-content pre code, .analysis-content pre[class*="language-"] { background: none !important; }
         .analysis-content strong { font-weight: 600; color: var(--primary-text); }
+        .analysis-content em { font-style: italic; }
         .analysis-content .analogy { font-style: italic; color: var(--secondary-text); border-left: 3px solid var(--accent); padding-left: 1rem; margin: 1.5rem 0; }
 
         /* --- Modal Styling --- */
@@ -328,6 +324,9 @@
         const applyTheme = (theme) => {
             htmlEl.setAttribute('data-theme', theme);
             themeToggle.checked = theme === 'dark';
+            // Use a specific dark theme for PrismJS if available
+            const prismTheme = theme === 'dark' ? 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css' : 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css';
+            // This part is tricky without a full build system, but for simplicity we'll stick to CSS overrides.
         };
         const toggleTheme = () => {
             const newTheme = htmlEl.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
@@ -365,9 +364,13 @@
                     return `<h3>${iconSvg}<span>${title}</span></h3>`;
                 })
                 .replace(/This code is like (.*)\./g, '<p class="analogy">This code is like $1.</p>')
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')     // Italic
                 .replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
                     const language = lang || 'plaintext';
-                    const highlightedCode = Prism.highlight(code, Prism.languages[language] || Prism.languages.clike, language);
+                    // Manually escape HTML to prevent issues
+                    const escapedCode = code.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    const highlightedCode = Prism.highlight(escapedCode, Prism.languages[language] || Prism.languages.clike, language);
                     return `<div class="code-wrapper">
                                 <div class="code-header">
                                     <span class="lang">${language}</span>
