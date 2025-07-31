@@ -282,7 +282,7 @@
         let imageBase64 = null;
         
         // IMPORTANT: Add your Gemini API Key here to run locally
-        const USER_API_KEY = ""; // <--- PASTE YOUR API KEY HERE
+        const USER_API_KEY = "AIzaSyCFrT0Gf0hHWisY_AQPLyV8FJO20ghQPt8"; // <--- PASTE YOUR API KEY HERE
 
         // --- Dynamic Logo Animation ---
         const logoWords = ["CodeRead", "Analyze", "Convert", "Test", "Debug"];
@@ -365,7 +365,7 @@
             let delay = 1000;
             for (let i = 0; i < 3; i++) {
                 try {
-                    const apiKey = AIzaSyCFrT0Gf0hHWisY_AQPLyV8FJO20ghQPt8; // Use the key from the constant
+                    const apiKey = USER_API_KEY; // Use the key from the constant
                     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
                     const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                     if (!response.ok) throw new Error(`API Error: ${response.status}`);
