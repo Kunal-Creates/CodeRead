@@ -164,7 +164,7 @@
         .analysis-content h3 svg { width: 20px; height: 20px; color: var(--accent); flex-shrink: 0; }
         .analysis-content p { margin-bottom: 1rem; }
         .analysis-content ul { list-style: none; padding-left: 0; margin-bottom: 1rem; }
-        .analysis-content li { display: flex; align-items: flex-start; gap: 0.75rem; margin-bottom: 0.75rem; }
+        .analysis-content li { display: flex; align-items: flex-start; gap: 0.75rem; margin-bottom: 1rem; } /* Added margin-bottom */
         .analysis-content li::before { content: '✓'; color: var(--accent); font-weight: 600; margin-top: 2px; }
         .analysis-content .code-wrapper { background-color: #272822; border-radius: 0.75rem; margin: 1.5rem 0; overflow: hidden; }
         .analysis-content .code-header { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 1rem; background-color: #393a34; }
@@ -355,7 +355,6 @@
         const renderLoader = (message) => { outputArea.innerHTML = `<div class="loader"><div class="spinner"></div><p>${message}</p></div>`; };
         const renderError = (message) => { outputArea.innerHTML = `<div class="error-message">${message}</div>`; };
         const renderMarkdown = (markdown) => {
-             // 1. Process code blocks first to protect their content
             const codeBlocks = [];
             let processedMarkdown = markdown.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
                 const language = lang || 'plaintext';
@@ -369,13 +368,12 @@
                                         Copy
                                     </button>
                                 </div>
-                                <pre><code class="language-${language}">${highlightedCode}</code></pre>
+                                <pre class="language-${language}"><code class="language-${language}">${highlightedCode}</code></pre>
                             </div>`;
                 codeBlocks.push(codeHtml);
                 return `%%CODE_BLOCK_${codeBlocks.length - 1}%%`;
             });
 
-            // 2. Process other markdown elements
             let html = processedMarkdown
                 .replace(/### ICON:(\w+)\s(.*)/g, (match, iconKey, title) => `<h3>${icons[iconKey] || ''}<span>${title}</span></h3>`)
                 .replace(/This code is like (.*)\./g, '<p class="analogy">This code is like $1.</p>')
@@ -383,7 +381,7 @@
                 .replace(/\*(.*?)\*/g, '<em>$1</em>')
                 .replace(/`([^`]+)`/g, '<code>$1</code>')
                 .split('\n\n').map(paragraph => {
-                    if (paragraph.startsWith('%%CODE_BLOCK_')) return paragraph;
+                    if (paragraph.trim().startsWith('%%CODE_BLOCK_')) return paragraph;
                     let p = paragraph.replace(/\n\s*-\s/g, '</li><li>').trim();
                     if (p.startsWith('</li><li>')) {
                         p = '<ul>' + p + '</ul>';
@@ -392,12 +390,12 @@
                     return p ? `<p>${p.replace(/\n/g, '<br>')}</p>` : '';
                 }).join('');
 
-            // 3. Re-insert code blocks
-            html = html.replace(/<p>%%CODE_BLOCK_(\d+)%%<\/p>/g, (match, index) => codeBlocks[parseInt(index, 10)]);
+            html = html.replace(/<p>%%CODE_BLOCK_(\d+)%%<\/p>/g, (match, index) => codeBlocks[parseInt(index, 10)])
+                       .replace(/%%CODE_BLOCK_(\d+)%%/g, (match, index) => codeBlocks[parseInt(index, 10)]);
+
 
             outputArea.innerHTML = `<div class="analysis-content">${html}</div>`;
             
-            // Add event listeners to new copy buttons
             outputArea.querySelectorAll('.copy-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const code = btn.closest('.code-wrapper').querySelector('pre code').innerText;
