@@ -94,51 +94,32 @@ document.addEventListener("keydown", (e) => {
 
 // --- IDE-like Input Enhancements ---
 codeInput.addEventListener("keydown", (e) => {
-  // Handle Tab key for indentation
   if (e.key === "Tab") {
-    e.preventDefault(); // Prevent focus from changing
+    e.preventDefault();
     const start = codeInput.selectionStart;
-    const end = codeInput.selectionEnd;
-
-    // Insert a 2-space indent
     document.execCommand("insertText", false, "  ");
-
-    // Restore the selection
     codeInput.selectionStart = codeInput.selectionEnd = start + 2;
     updateHighlighting();
     return;
   }
 
-  const bracketMap = {
-    "(": ")",
-    "{": "}",
-    "[": "]",
-  };
-
+  const bracketMap = { "(": ")", "{": "}", "[": "]" };
   const openingBracket = e.key;
   const closingBracket = bracketMap[openingBracket];
 
-  // Handle auto-closing of brackets
   if (closingBracket) {
     e.preventDefault();
     const start = codeInput.selectionStart;
-
-    // Insert the opening and closing brackets
     document.execCommand("insertText", false, openingBracket + closingBracket);
-
-    // Move the cursor back between the brackets
     codeInput.selectionStart = codeInput.selectionEnd = start + 1;
     updateHighlighting();
   }
 
-  // Handle smart indentation on Enter after an opening curly brace
   if (openingBracket === "{" && e.key === "Enter") {
     const start = codeInput.selectionStart;
     if (codeInput.value.substring(start - 1, start + 1) === "{}") {
       e.preventDefault();
-      // Insert a newline with a 2-space indent, and another newline for the closing brace
       document.execCommand("insertText", false, "\n  \n");
-      // Position the cursor on the new indented line
       codeInput.selectionStart = codeInput.selectionEnd = start + 3;
       updateHighlighting();
     }
@@ -172,54 +153,38 @@ const renderError = (message) => {
     `;
 };
 
+// UPDATED: renderMarkdown function
 const renderMarkdown = (markdown) => {
   const codeBlocks = [];
-  let processedMarkdown = markdown.replace(/``````/g, (match, lang, code) => {
-    const language = lang || "plaintext";
-    const escapedCode = code.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    const highlightedCode = Prism.highlight(
-      escapedCode,
-      Prism.languages[language] || Prism.languages.clike,
-      language,
-    );
-    const codeHtml = `<div class="code-wrapper">
-                        <div class="code-header">
-                            <span class="lang">${language}</span>
-                            <button class="copy-btn">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                                Copy
-                            </button>
-                        </div>
-                        <pre class="language-${language}"><code class="language-${language}">${highlightedCode}</code></pre>
-                    </div>`;
-    codeBlocks.push(codeHtml);
-    return `%%CODE_BLOCK_${codeBlocks.length - 1}%%`;
-  });
+  let processedMarkdown = markdown.replace(
+    /```(\w+)?\n([\s\S]*?)\n```/g,
+    (match, lang, code) => {
+      const language = lang || "plaintext";
+      const escapedCode = code.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const highlightedCode = Prism.highlight(
+        escapedCode,
+        Prism.languages[language] || Prism.languages.clike,
+        language,
+      );
 
-  // Enhanced inline code with syntax highlighting
+      const codeHtml = `<div class="code-wrapper">
+                            <div class="code-header">
+                                <span class="lang">${language}</span>
+                                <button class="copy-btn" title="Copy code">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                </button>
+                            </div>
+                            <pre class="language-${language}"><code class="language-${language}">${highlightedCode}</code></pre>
+                        </div>`;
+      codeBlocks.push(codeHtml);
+      return `%%CODE_BLOCK_${codeBlocks.length - 1}%%`;
+    },
+  );
+
+  // FIXED: Added spaces around the generated <code> tag to allow for proper text wrapping.
   processedMarkdown = processedMarkdown.replace(
     /`([^`]+)`/g,
-    (match, codeContent) => {
-      const trimmed = codeContent.trim();
-      let highlightedContent = codeContent;
-
-      // Basic syntax highlighting for common patterns
-      if (trimmed.includes("(") && trimmed.includes(")")) {
-        // Function call pattern
-        highlightedContent = trimmed.replace(
-          /(\w+)(\()/g,
-          '<span class="token function">$1</span><span class="token punctuation">$2</span>',
-        );
-      } else if (trimmed.includes("=")) {
-        // Assignment pattern
-        highlightedContent = trimmed.replace(
-          /(\w+)\s*=\s*(.+)/g,
-          '<span class="token keyword">$1</span> <span class="token operator">=</span> <span class="token string">$2</span>',
-        );
-      }
-
-      return `<code class="inline-code">${highlightedContent}</code>`;
-    },
+    " <code>$1</code> ",
   );
 
   let html = processedMarkdown
@@ -236,45 +201,43 @@ const renderMarkdown = (markdown) => {
     .replace(/\*(.*?)\*/g, "<em>$1</em>")
     .split("\n\n")
     .map((paragraph) => {
-      if (paragraph.trim().startsWith("%%CODE_BLOCK_")) return paragraph;
-
-      // Remove bullet point asterisks but preserve emphasis
-      let p = paragraph.replace(/\n\s*-\s+/g, "</li><li>").trim();
-
-      if (p.startsWith("</li><li>")) {
-        p = '<ul class="enhanced-list">' + p + "</ul>";
-        p = p.replace("</li><li>", "<li>");
-      } else if (p.includes("</li><li>")) {
-        p = '<ul class="enhanced-list"><li>' + p + "</ul>";
+      if (paragraph.trim().startsWith("%%CODE_BLOCK_")) {
+        return paragraph;
       }
-
-      return p
-        ? `<p class="enhanced-paragraph">${p.replace(/\n/g, "<br>")}</p>`
-        : "";
+      if (paragraph.trim().startsWith("- ")) {
+        const items = paragraph.split(/\n(?=- )/g);
+        const listItems = items
+          .map((item) => {
+            const content = item.trim().substring(2).replace(/\n/g, " ");
+            return `<li>${content}</li>`;
+          })
+          .join("");
+        return `<ul>${listItems}</ul>`;
+      }
+      return paragraph.trim() ? `<p>${paragraph.replace(/\n/g, " ")}</p>` : "";
     })
     .join("");
 
-  html = html
-    .replace(
-      /<p[^>]*>%%CODE_BLOCK_(\d+)%%<\/p>/g,
-      (match, index) => codeBlocks[parseInt(index, 10)],
-    )
-    .replace(
-      /%%CODE_BLOCK_(\d+)%%/g,
-      (match, index) => codeBlocks[parseInt(index, 10)],
-    );
+  html = html.replace(
+    /<p>%%CODE_BLOCK_(\d+)%%<\/p>|%%CODE_BLOCK_(\d+)%%/g,
+    (match, index1, index2) => {
+      const index = index1 || index2;
+      return codeBlocks[parseInt(index, 10)];
+    },
+  );
 
   outputArea.innerHTML = `<div class="analysis-content">${html}</div>`;
 
   outputArea.querySelectorAll(".copy-btn").forEach((btn) => {
+    const originalIcon = btn.innerHTML;
     btn.addEventListener("click", () => {
       const code = btn
         .closest(".code-wrapper")
         .querySelector("pre code").innerText;
       navigator.clipboard.writeText(code).then(() => {
-        btn.innerHTML = "Copied!";
+        btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
         setTimeout(() => {
-          btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy`;
+          btn.innerHTML = originalIcon;
         }, 2000);
       });
     });
@@ -282,22 +245,15 @@ const renderMarkdown = (markdown) => {
 };
 
 const resetAll = () => {
-  // Reset text input
   codeInput.value = "";
   updateHighlighting();
-
-  // Reset image input state
   imagePreview.style.display = "none";
   previewImg.src = "";
   fileInput.value = "";
   imageBase64 = null;
   currentAnalysisType = "text";
   codeInput.disabled = false;
-
-  // Restore original placeholder in the output area
   outputArea.innerHTML = `<div id="output-placeholder" class="placeholder">${originalPlaceholderHTML}</div>`;
-
-  // Focus the input for better UX
   codeInput.focus();
 };
 
@@ -371,49 +327,36 @@ analyzeButton.addEventListener("click", () => {
   const dataParts = getBasePayload();
   if (!dataParts) return;
 
-  const prompt = `You are CodeRead, an AI code analysis expert with a knack for storytelling. Your goal is to make code intuitive and easy to understand.
+  const prompt = `You are CodeRead, a friendly AI assistant. Your main goal is to explain code in **simple, everyday English**. Avoid technical words and jargon. Imagine you're explaining it to a friend who is new to coding.
 
-First, identify the programming language of the code snippet. Then, explain the code by framing it as a story or a simple analogy.
+Please identify the programming language first.
 
-Structure your response in Markdown with these EXACT sections, using the 'ICON:' prefix:
+Then, structure your response in Markdown with these exact, friendly sections, using the 'ICON:' prefix:
 
 ### ICON:Story The Story of this Code
-Start with the phrase "This code is like a..." and provide a simple, creative analogy. Then, give a high-level summary of its purpose.
+Start with a simple analogy, like "This code is like a...". Then, explain what the code does in one or two simple sentences.
 
-### ICON:Logic Step-by-Step Logic
-Walk through the code's logic as if you are the computer executing it.
+### ICON:Logic How It Works, Step-by-Step
+Explain the code's logic line by line.
+- Use simple bullet points for each step.
+- Use **bold** for important names.
+- Use \`backticks\` for any code references.
 
-- Use bullet points for clarity
-- Mention the detected programming language
-- Use **bold** for key terms or variable names
-- Use \`backticks\` for inline code references
-- Leave blank lines between major steps
+### ICON:Issues Possible Problems
+Point out any potential issues or things that could go wrong. If there are no problems, just say "Everything looks good! No problems here."
 
-### ICON:Issues Potential Plot Twists
-Point out any potential bugs, edge cases, or vulnerabilities. If none, state "The story looks solid, with no unexpected plot twists."
+### ICON:Improvements Ways to Improve
+Suggest simple ways to make the code better, cleaner, or faster.
 
-- List each issue clearly
-- Provide specific examples when possible
-- Leave blank lines between different issues
-
-### ICON:Improvements A Better Draft
-Suggest specific, actionable improvements for efficiency, readability, or modern best practices.
-
-- Each suggestion should be on a separate line
-- Use \`backticks\` for code references
-- Leave blank lines between different improvements
-
-Important formatting rules:
-- Never use asterisks (*) for bullet points - use hyphens (-) instead
-- Always leave blank lines between sections and major points
-- Use backticks for all code references, variable names, and function names
-- Keep paragraphs well-spaced for readability`;
+Important rules:
+- Use hyphens (-) for bullet points.
+- Keep paragraphs short and easy to read.`;
 
   const payload = {
     contents: [{ parts: [{ text: prompt }, ...dataParts] }],
   };
 
-  generateWithBackoff(payload, "Unraveling the story...");
+  generateWithBackoff(payload, "Thinking up a simple explanation...");
 });
 
 testButton.addEventListener("click", () => {
@@ -421,19 +364,23 @@ testButton.addEventListener("click", () => {
   const dataParts = getBasePayload();
   if (!dataParts) return;
 
-  const prompt = `You are an expert test generation AI. Your task is to write a suite of unit tests for the provided code. First, detect the language and a popular testing framework for it (e.g., Jest for JS/TS, PyTest for Python, JUnit for Java). Then, generate the test code. Structure your response in Markdown with these EXACT sections, using the 'ICON:' prefix:
+  const prompt = `You are a helpful AI that writes tests for code. Your goal is to make it easy for anyone to understand.
 
-### ICON:Tests Generating Unit Tests
-State the detected language and the testing framework you've chosen. Briefly explain the purpose of the test suite.
+First, figure out the programming language and choose a common tool for testing it (like Jest for JavaScript or PyTest for Python).
 
-### ICON:Logic Code
-Provide the complete, runnable unit test code inside a single code block.`;
+Then, create the tests and structure your response in Markdown with these exact sections:
+
+### ICON:Tests Writing Some Tests
+Say which language and testing tool you chose. Briefly explain what the tests will check in simple terms.
+
+### ICON:Logic Test Code
+Provide the complete test code in a single code block.`;
 
   const payload = {
     contents: [{ parts: [{ text: prompt }, ...dataParts] }],
   };
 
-  generateWithBackoff(payload, "Generating unit tests...");
+  generateWithBackoff(payload, "Writing up some tests...");
 });
 
 convertButton.addEventListener("click", () => {
@@ -454,16 +401,19 @@ modalConfirm.addEventListener("click", () => {
   const dataParts = getBasePayload();
   if (!dataParts) return;
 
-  const prompt = `You are an expert code conversion AI. Your task is to convert the given code snippet to ${targetLanguage}. Structure your response in Markdown with this EXACT section header, using the 'ICON:' prefix:
+  const prompt = `You are a helpful AI that translates code from one language to another. Your task is to convert the given code to **${targetLanguage}**.
 
-### ICON:Conversion Conversion to ${targetLanguage}
-First, provide the complete, converted code in ${targetLanguage} inside a single code block. Below the code block, state the detected source language and mention any important caveats or differences.`;
+Please structure your response in Markdown with this exact section:
+
+### ICON:Conversion Converted to ${targetLanguage}
+First, provide the complete, converted code in a single code block.
+After the code, explain any important differences between the old and new code in simple, easy-to-understand English.`;
 
   const payload = {
     contents: [{ parts: [{ text: prompt }, ...dataParts] }],
   };
 
-  generateWithBackoff(payload, `Converting to ${targetLanguage}...`);
+  generateWithBackoff(payload, `Translating to ${targetLanguage}...`);
 });
 
 newSnippetButton.addEventListener("click", resetAll);
