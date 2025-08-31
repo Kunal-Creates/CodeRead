@@ -498,25 +498,31 @@ input:checked + .slider:before {
     margin-bottom: 1rem;
     line-height: 1.7;
 }
+
+/* ======================================================= */
+/* --- START: This is the section with the fix --- */
+/* ======================================================= */
 .analysis-content ul {
     list-style: none;
-    padding-left: 0;
+    padding-left: 1.5rem; /* Indent list for the bullet */
     margin: 1.5rem 0;
 }
 .analysis-content li {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.75rem;
+    position: relative; /* Create positioning context for the ::before pseudo-element */
     margin-bottom: 1rem;
-    padding-left: 0.5rem;
     line-height: 1.6;
 }
 .analysis-content li::before {
     content: "✓";
     color: var(--accent);
     font-weight: 600;
-    margin-top: 2px;
+    position: absolute; /* Position the bullet */
+    left: -1.5rem; /* Place it in the ul's padding */
+    top: 2px;
 }
+/* ======================================================= */
+/* --- END: This is the section with the fix --- */
+/* ======================================================= */
 
 /* UPDATED: Code Block Styling */
 .analysis-content .code-wrapper {
