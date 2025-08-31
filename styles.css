@@ -498,10 +498,6 @@ input:checked + .slider:before {
     margin-bottom: 1rem;
     line-height: 1.7;
 }
-
-/* ======================================================= */
-/* --- START: This is the section with the fix --- */
-/* ======================================================= */
 .analysis-content ul {
     list-style: none;
     padding-left: 1.5rem; /* Indent list for the bullet */
@@ -517,20 +513,8 @@ input:checked + .slider:before {
     color: var(--accent);
     font-weight: 600;
     position: absolute; /* Position the bullet */
-    left: -1.5rem; /* Place it in the ul's padding */
+    left: -1.5rem;      /* Place it in the ul's padding */
     top: 2px;
-}
-/* ======================================================= */
-/* --- END: This is the section with the fix --- */
-/* ======================================================= */
-
-/* UPDATED: Code Block Styling */
-.analysis-content .code-wrapper {
-    position: relative;
-    background-color: var(--code-bg);
-    border-radius: 0.75rem;
-    margin: 1.5rem 0;
-    overflow: hidden;
 }
 
 .analysis-content .code-header {
@@ -543,7 +527,7 @@ input:checked + .slider:before {
     right: 0;
     padding: 0.75rem 1rem;
     z-index: 1;
-    pointer-events: none; /* Allows clicks to pass through to the pre/code block */
+    pointer-events: none;
 }
 
 .analysis-content .code-header .lang {
@@ -578,6 +562,18 @@ input:checked + .slider:before {
     height: 16px;
 }
 
+.analysis-content pre {
+    position: relative;
+    background-color: var(--code-bg);
+    border-radius: 0.75rem;
+    margin: 1.5rem 0;
+    overflow: hidden;
+    padding: 1.25rem;
+    padding-top: 3.25rem;
+    overflow-x: auto;
+    font-size: 0.9rem;
+}
+
 /* UPDATED: Inline Code Styling */
 .analysis-content code {
     font-family: "JetBrains Mono", monospace;
@@ -589,15 +585,6 @@ input:checked + .slider:before {
     font-size: 85%;
 }
 
-.analysis-content pre {
-    background-color: transparent;
-    margin: 0;
-    padding: 1.25rem;
-    padding-top: 3rem; /* Make space for the header */
-    overflow-x: auto;
-    font-size: 0.9rem;
-}
-
 /* This is a reset for code inside a pre block, so it doesn't get the inline style */
 .analysis-content pre code {
     background: none !important;
@@ -605,6 +592,7 @@ input:checked + .slider:before {
     padding: 0;
     color: inherit;
     font-size: inherit;
+    display: block; /* --- THIS IS THE FIX --- */
 }
 
 .analysis-content .analogy {
@@ -802,8 +790,7 @@ input:checked + .slider:before {
     color: #ae81ff;
 }
 [data-theme="dark"] .token.selector,
-[data-theme="dark"] .token.attr-name,
-[data-theme="dark"] .token.string,
+[data-trgb(12, 12, 12) .token.attr-name,[data-theme="dark"] .token.string,
 [data-theme="dark"] .token.char,
 [data-theme="dark"] .token.builtin,
 [data-theme="dark"] .token.inserted {
