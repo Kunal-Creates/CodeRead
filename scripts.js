@@ -35,6 +35,8 @@ const USER_API_KEY = window.CONFIG?.GEMINI_API_KEY;
 const icons = {
   Story: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>`,
   Logic: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20v-4"/><path d="M12 10V4"/><path d="M12 16a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2z"/><path d="M20 12h-4"/><path d="M8 12H4"/></svg>`,
+  Why: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`,
+  Complexity: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"></path></svg>`,
   Issues: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
   Improvements: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M21.2 12.8H2.8"/><path d="m3 9 9-7 9 7"/><path d="m3 15 9 7 9-7"/></svg>`,
   Tests: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>`,
@@ -153,38 +155,41 @@ const renderError = (message) => {
     `;
 };
 
-// UPDATED: renderMarkdown function
 const renderMarkdown = (markdown) => {
   const codeBlocks = [];
   let processedMarkdown = markdown.replace(
-    /```(\w+)?\n([\s\S]*?)\n```/g,
+    /```(\w+)?\n([\s\S]*?)(?:\n```|$)/g,
     (match, lang, code) => {
       const language = lang || "plaintext";
-      const escapedCode = code.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      // --- FIX #2: Trim whitespace from the beginning and end of the code ---
+      const trimmedCode = code.trim();
+      const escapedCode = trimmedCode
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
       const highlightedCode = Prism.highlight(
         escapedCode,
         Prism.languages[language] || Prism.languages.clike,
         language,
       );
 
-      const codeHtml = `<div class="code-wrapper">
+      // --- FIX #1: Removed class="language-..." from the <pre> tag ---
+      const codeHtml = `<pre>
                             <div class="code-header">
                                 <span class="lang">${language}</span>
                                 <button class="copy-btn" title="Copy code">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                                 </button>
                             </div>
-                            <pre class="language-${language}"><code class="language-${language}">${highlightedCode}</code></pre>
-                        </div>`;
+                            <code class="language-${language}">${highlightedCode}</code>
+                        </pre>`;
       codeBlocks.push(codeHtml);
       return `%%CODE_BLOCK_${codeBlocks.length - 1}%%`;
     },
   );
 
-  // FIXED: Added spaces around the generated <code> tag to allow for proper text wrapping.
   processedMarkdown = processedMarkdown.replace(
     /`([^`]+)`/g,
-    " <code>$1</code> ",
+    " <code>$1</code>",
   );
 
   let html = processedMarkdown
@@ -231,9 +236,7 @@ const renderMarkdown = (markdown) => {
   outputArea.querySelectorAll(".copy-btn").forEach((btn) => {
     const originalIcon = btn.innerHTML;
     btn.addEventListener("click", () => {
-      const code = btn
-        .closest(".code-wrapper")
-        .querySelector("pre code").innerText;
+      const code = btn.closest(".code-header").nextElementSibling.innerText;
       navigator.clipboard.writeText(code).then(() => {
         btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
         setTimeout(() => {
@@ -271,41 +274,56 @@ const generateWithBackoff = async (payload, loadingMessage) => {
   );
   renderLoader(loadingMessage);
 
-  let delay = 1000;
-  for (let i = 0; i < 3; i++) {
-    try {
-      const apiKey = USER_API_KEY;
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
-      const response = await fetch(apiUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!response.ok) throw new Error(`API Error: ${response.status}`);
-      const result = await response.json();
-      if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
-        renderMarkdown(result.candidates[0].content.parts[0].text);
-        break;
-      } else {
-        throw new Error(
-          `Analysis failed. Reason: ${
-            result.candidates?.[0]?.finishReason || "No content"
-          }.`,
-        );
+  try {
+    const apiKey = USER_API_KEY;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:streamGenerateContent?key=${apiKey}&alt=sse`;
+
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) throw new Error(`API Error: ${response.status}`);
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let accumulatedText = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value);
+      const lines = chunk.split("\n");
+
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          const jsonStr = line.substring(6);
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const textPart = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (textPart) {
+              accumulatedText += textPart;
+            }
+          } catch (e) {
+            // Ignore parsing errors
+          }
+        }
       }
-    } catch (e) {
-      if (i === 2) {
-        renderError(e.message);
-        break;
+      if (accumulatedText) {
+        renderMarkdown(accumulatedText);
+        outputArea.scrollTop = outputArea.scrollHeight;
       }
-      await sleep(delay);
-      delay *= 2;
     }
+  } catch (e) {
+    renderError(e.message);
+  } finally {
+    isLoading = false;
+    [analyzeButton, convertButton, testButton].forEach(
+      (btn) => (btn.disabled = false),
+    );
   }
-  isLoading = false;
-  [analyzeButton, convertButton, testButton].forEach(
-    (btn) => (btn.disabled = false),
-  );
 };
 
 const getBasePayload = () => {
@@ -327,26 +345,44 @@ analyzeButton.addEventListener("click", () => {
   const dataParts = getBasePayload();
   if (!dataParts) return;
 
-  const prompt = `You are CodeRead, a friendly AI assistant. Your main goal is to explain code in **simple, everyday English**. Avoid technical words and jargon. Imagine you're explaining it to a friend who is new to coding.
+  const prompt = `You are CodeRead, a world-class programming expert and teacher. Your goal is to explain code so deeply and clearly that even a non-coder can understand the core concepts. Imagine you're explaining it to a curious friend.
 
 Please identify the programming language first.
 
-Then, structure your response in Markdown with these exact, friendly sections, using the 'ICON:' prefix:
+Then, structure your response in Markdown with these exact, friendly sections, using the 'ICON:' prefix for each title.
 
 ### ICON:Story The Story of this Code
-Start with a simple analogy, like "This code is like a...". Then, explain what the code does in one or two simple sentences.
+Start with a simple, creative analogy, like "This code is like a recipe for...". Then, explain the code's overall purpose in one or two simple sentences.
 
 ### ICON:Logic How It Works, Step-by-Step
-Explain the code's logic line by line.
+Explain the code's logic line-by-line or block-by-block.
 - Use simple bullet points for each step.
-- Use **bold** for important names.
+- Use **bold** for important variable or function names.
 - Use \`backticks\` for any code references.
+- Explain the purpose of symbols and syntax (e.g., "the semicolon ';' tells the computer that this instruction is finished").
 
-### ICON:Issues Possible Problems
-Point out any potential issues or things that could go wrong. If there are no problems, just say "Everything looks good! No problems here."
+### ICON:Why The 'Why' Behind the Code
+This is crucial. Explain the design choices.
+- Why was this function or variable written in this specific way?
+- What problem does this particular structure solve?
+- Are there common alternative ways to write this, and why might a developer choose this one?
 
-### ICON:Improvements Ways to Improve
-Suggest simple ways to make the code better, cleaner, or faster.
+### ICON:Complexity Performance Check
+Analyze the time and space complexity using Big O notation, but explain it simply.
+- For Time Complexity, say: "This is O(n), which means the time it takes grows in a straight line as the input gets bigger."
+- For Space Complexity, say: "This is O(1), which means it uses a constant amount of memory, no matter the size of the input."
+- Avoid jargon. Explain what the complexity means for real-world performance.
+
+### ICON:Issues Potential Problems & Bugs
+Point out potential issues, edge cases, or common bugs.
+- If the code is broken, explain exactly why and what line is causing the error.
+- If the code works, explain what could make it break (e.g., "This would crash if the input list was empty.").
+- Provide debugging tips.
+
+### ICON:Improvements How to Make It Better
+Suggest concrete ways to improve the code.
+- Focus on readability, modern best practices, and efficiency.
+- If possible, provide a short "before" and "after" code snippet to illustrate the improvement.
 
 Important rules:
 - Use hyphens (-) for bullet points.
@@ -356,7 +392,7 @@ Important rules:
     contents: [{ parts: [{ text: prompt }, ...dataParts] }],
   };
 
-  generateWithBackoff(payload, "Thinking up a simple explanation...");
+  generateWithBackoff(payload, "Thinking up a deep explanation...");
 });
 
 testButton.addEventListener("click", () => {
