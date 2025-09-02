@@ -59,9 +59,205 @@ const savedTheme = localStorage.getItem("theme") || "light";
 applyTheme(savedTheme);
 
 // --- Syntax Highlighting Logic ---
+// Language detection based on code patterns
+const detectLanguage = (code) => {
+  if (!code.trim()) return "plaintext";
+
+  const patterns = {
+    javascript: [
+      /function\s+\w+\s*\(/,
+      /const\s+\w+\s*=/,
+      /let\s+\w+\s*=/,
+      /var\s+\w+\s*=/,
+      /=>\s*{?/,
+      /console\.log/,
+      /import\s+.*from/,
+      /export\s+(default\s+)?/,
+    ],
+    python: [
+      /def\s+\w+\s*\(/,
+      /import\s+\w+/,
+      /from\s+\w+\s+import/,
+      /if\s+__name__\s*==\s*['"]__main__['"]/,
+      /print\s*\(/,
+      /class\s+\w+.*:/,
+      /elif\s+/,
+      /:\s*$/m,
+    ],
+    java: [
+      /public\s+(static\s+)?void\s+main/,
+      /public\s+class\s+\w+/,
+      /System\.out\.print/,
+      /private\s+(static\s+)?\w+/,
+      /import\s+java\./,
+      /extends\s+\w+/,
+      /implements\s+\w+/,
+    ],
+    cpp: [
+      /#include\s*</,
+      /std::/,
+      /cout\s*<</,
+      /cin\s*>>/,
+      /int\s+main\s*\(/,
+      /using\s+namespace\s+std/,
+      /class\s+\w+\s*{/,
+      /struct\s+\w+\s*{/,
+    ],
+    c: [
+      /#include\s*</,
+      /int\s+main\s*\(/,
+      /printf\s*\(/,
+      /scanf\s*\(/,
+      /struct\s+\w+\s*{/,
+      /#define\s+\w+/,
+    ],
+    rust: [
+      /fn\s+main\s*\(/,
+      /fn\s+\w+/,
+      /let\s+(mut\s+)?\w+/,
+      /println!\s*\(/,
+      /use\s+std::/,
+      /impl\s+(.*\s+for\s+)?\w+/,
+      /struct\s+\w+\s*{/,
+      /enum\s+\w+\s*{/,
+    ],
+    go: [
+      /func\s+main\s*\(/,
+      /func\s+\w+/,
+      /package\s+main/,
+      /import\s+\(/,
+      /fmt\.Print/,
+      /var\s+\w+/,
+      /type\s+\w+\s+struct/,
+    ],
+    php: [
+      /<\?php/,
+      /echo\s+/,
+      /\$\w+\s*=/,
+      /function\s+\w+\s*\(/,
+      /class\s+\w+/,
+      /namespace\s+\w+/,
+      /use\s+\w+/,
+    ],
+    ruby: [
+      /def\s+\w+/,
+      /class\s+\w+/,
+      /puts\s+/,
+      /require\s+['"]/,
+      /end\s*$/,
+      /do\s*\|/,
+      /\.each\s+do/,
+    ],
+    csharp: [
+      /using\s+System/,
+      /namespace\s+\w+/,
+      /class\s+\w+/,
+      /static\s+void\s+Main/,
+      /Console\.Write/,
+      /public\s+(static\s+)?\w+/,
+      /private\s+(static\s+)?\w+/,
+    ],
+    html: [
+      /<html/,
+      /<head/,
+      /<body/,
+      /<div/,
+      /<span/,
+      /<p>/,
+      /<script/,
+      /<style/,
+      /<!DOCTYPE/,
+    ],
+    css: [
+      /{\s*$/,
+      /}\s*$/,
+      /:\s*[^;]+;/,
+      /@media/,
+      /@import/,
+      /\.[\w-]+\s*{/,
+      /#[\w-]+\s*{/,
+    ],
+    sql: [
+      /SELECT\s+/,
+      /FROM\s+\w+/,
+      /WHERE\s+/,
+      /INSERT\s+INTO/,
+      /UPDATE\s+\w+/,
+      /DELETE\s+FROM/,
+      /CREATE\s+(TABLE|DATABASE)/,
+      /ALTER\s+TABLE/,
+    ],
+  };
+
+  let maxScore = 0;
+  let detectedLang = "plaintext";
+
+  for (const [lang, regexes] of Object.entries(patterns)) {
+    let score = 0;
+    for (const regex of regexes) {
+      if (regex.test(code)) {
+        score++;
+      }
+    }
+    if (score > maxScore) {
+      maxScore = score;
+      detectedLang = lang;
+    }
+  }
+
+  // Special case for TypeScript (if it looks like JS but has type annotations)
+  if (
+    detectedLang === "javascript" &&
+    (/:\s*\w+(\[\])?(\s*\|\s*\w+)*\s*[=;,)]/.test(code) ||
+      /interface\s+\w+/.test(code) ||
+      /type\s+\w+\s*=/.test(code))
+  ) {
+    detectedLang = "typescript";
+  }
+
+  return detectedLang;
+};
+
+// Map detected languages to Prism.js language names
+const mapToPrismLanguage = (detectedLang) => {
+  const languageMap = {
+    javascript: "javascript",
+    typescript: "typescript",
+    python: "python",
+    java: "java",
+    cpp: "cpp",
+    c: "c",
+    csharp: "csharp",
+    rust: "rust",
+    go: "go",
+    php: "php",
+    ruby: "ruby",
+    html: "markup",
+    css: "css",
+    sql: "sql",
+    json: "json",
+    xml: "markup",
+    yaml: "yaml",
+    bash: "bash",
+    shell: "bash",
+    powershell: "powershell",
+    dockerfile: "docker",
+    markdown: "markdown",
+  };
+
+  return languageMap[detectedLang.toLowerCase()] || detectedLang.toLowerCase();
+};
+
 const updateHighlighting = () => {
   const code = codeInput.value;
+  const detectedLang = detectLanguage(code);
+  const prismLang = mapToPrismLanguage(detectedLang);
+
+  // Update the language class
+  highlightingCode.className = `language-${prismLang}`;
   highlightingCode.textContent = code;
+
+  // Apply syntax highlighting
   Prism.highlightElement(highlightingCode);
 };
 
@@ -160,22 +356,34 @@ const renderMarkdown = (markdown) => {
   let processedMarkdown = markdown.replace(
     /```(\w+)?\n([\s\S]*?)(?:\n```|$)/g,
     (match, lang, code) => {
-      const language = lang || "plaintext";
+      // Auto-detect language if not specified
+      let language = lang;
+      if (!language) {
+        language = detectLanguage(code);
+      }
+
+      // Map to Prism.js compatible language name
+      const prismLang = mapToPrismLanguage(language);
+
       // --- FIX #2: Trim whitespace from the beginning and end of the code ---
       const trimmedCode = code.trim();
       const escapedCode = trimmedCode
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;");
+
+      // Use detected language for syntax highlighting
+      const prismLanguage = Prism.languages[prismLang] || Prism.languages.clike;
+
       const highlightedCode = Prism.highlight(
         escapedCode,
-        Prism.languages[language] || Prism.languages.clike,
-        language,
+        prismLanguage,
+        prismLang,
       );
 
-      // --- FIX #1: Removed class="language-..." from the <pre> tag ---
-      const codeHtml = `<pre>
+      // Enhanced code block with better styling
+      const codeHtml = `<pre class="code-block">
                             <div class="code-header">
-                                <span class="lang">${language}</span>
+                                <span class="lang">${language.toUpperCase()}</span>
                                 <button class="copy-btn" title="Copy code">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                                 </button>
@@ -187,10 +395,31 @@ const renderMarkdown = (markdown) => {
     },
   );
 
-  processedMarkdown = processedMarkdown.replace(
-    /`([^`]+)`/g,
-    " <code>$1</code>",
-  );
+  // Enhanced inline code highlighting with language hints
+  processedMarkdown = processedMarkdown.replace(/`([^`]+)`/g, (match, code) => {
+    // Detect if inline code has language-specific patterns
+    let className = "";
+    if (/^[a-zA-Z_$][a-zA-Z0-9_$]*\s*\(/.test(code)) {
+      className = ' class="function-call"';
+    } else if (/^[A-Z][a-zA-Z0-9]*$/.test(code)) {
+      className = ' class="class-name"';
+    } else if (/^\$[a-zA-Z_][a-zA-Z0-9_]*$/.test(code)) {
+      className = ' class="variable"';
+    } else if (/^(true|false|null|undefined|None|True|False)$/.test(code)) {
+      className = ' class="literal"';
+    } else if (/^\d+(\.\d+)?$/.test(code)) {
+      className = ' class="number"';
+    } else if (/^['"].*['"]$/.test(code)) {
+      className = ' class="string"';
+    } else if (
+      /^(if|else|for|while|function|class|def|return|import|export|const|let|var|fn|struct|enum|impl|use|namespace|using|public|private|static|final|async|await)$/.test(
+        code,
+      )
+    ) {
+      className = ' class="keyword"';
+    }
+    return ` <code${className}>${code}</code>`;
+  });
 
   let html = processedMarkdown
     .replace(
